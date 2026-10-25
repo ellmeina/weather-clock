@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>気象ステーション & デジタル時計</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
@@ -43,15 +43,24 @@
       user-select: none;
     }
 
+    html {
+      background-color: var(--screen-bg);
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+    }
+
     body {
-      background-color: var(--body-bg);
+      background-color: var(--screen-bg);
       font-family: 'Zen Kaku Gothic New', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      margin: 0;
+      padding: 0;
       color: var(--ink-primary);
       transition: background-color 0.3s;
     }
@@ -572,18 +581,20 @@
       border: none !important;
       border-radius: 0 !important;
       box-shadow: none !important;
+      display: flex !important;
+      flex-direction: column !important;
     }
 
     body.is-fullscreen .dashboard-grid {
-      flex: 1 !important;
-      height: calc(100dvh - 34px) !important;
+      flex: 1 1 0 !important;
+      height: auto !important;
       min-height: 0 !important;
       grid-template-columns: 1.05fr 1.25fr 1fr !important;
     }
 
     /* スマホ・タブレットの横向き時、および高さが低い画面で3カラムを1画面に完全収納 */
-    @media (orientation: landscape) and (max-height: 580px) {
-      body {
+    @media (orientation: landscape) and (max-height: 750px), (orientation: landscape) and (max-width: 1100px) {
+      html, body {
         padding: 0 !important;
         margin: 0 !important;
         background-color: var(--screen-bg) !important;
@@ -600,17 +611,20 @@
         border: none !important;
         border-radius: 0 !important;
         box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
       }
 
       .status-bar {
-        padding: 0.2rem 0.65rem !important;
+        padding: 0.2rem calc(0.65rem + env(safe-area-inset-right, 0px)) 0.2rem calc(0.65rem + env(safe-area-inset-left, 0px)) !important;
         font-size: 0.76rem !important;
         height: 30px !important;
+        flex-shrink: 0 !important;
       }
 
       .dashboard-grid {
-        flex: 1 !important;
-        height: calc(100dvh - 30px) !important;
+        flex: 1 1 0 !important;
+        height: auto !important;
         min-height: 0 !important;
         grid-template-columns: 1.05fr 1.25fr 1fr !important;
       }
