@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#dbe0d7" id="metaThemeColor">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"気象ステーション","short_name":"天気時計","display":"fullscreen","orientation":"landscape","background_color":"#dbe0d7","theme_color":"#dbe0d7"}'>
   <title>気象ステーション & デジタル時計</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
@@ -23,6 +27,7 @@
       --accent-today: rgba(0, 0, 0, 0.06);
     }
 
+    html.dark-theme,
     body.dark-theme {
       --body-bg: #090b0e;
       --screen-bg: #181c22;
@@ -656,42 +661,43 @@
       }
 
       .clock-panel {
-        padding: 0.25rem 0.45rem !important;
-        gap: 0.05rem !important;
+        padding: 0.3rem 0.5rem !important;
+        gap: 0.1rem !important;
         flex: 1 !important;
         justify-content: space-around !important;
       }
 
       .date-str {
-        font-size: 0.85rem !important;
-        min-height: 1.1rem !important;
+        font-size: 0.92rem !important;
+        min-height: 1.2rem !important;
       }
 
       .digital-clock {
-        font-size: clamp(2rem, 8.5vh, 3.1rem) !important;
+        font-size: clamp(3.15rem, 5.8vw, 4.1rem) !important;
+        line-height: 1 !important;
         margin: 0.05rem 0 !important;
       }
 
       .clock-sec {
-        font-size: 1.05rem !important;
+        font-size: 1.35rem !important;
       }
 
       .today-summary-row {
-        gap: 0.6rem !important;
-        padding-top: 0.2rem !important;
+        gap: 0.75rem !important;
+        padding-top: 0.25rem !important;
       }
 
       .summary-icon {
-        width: 30px !important;
-        height: 30px !important;
+        width: 34px !important;
+        height: 34px !important;
       }
 
       .summary-desc {
-        font-size: 0.8rem !important;
+        font-size: 0.85rem !important;
       }
 
       .summary-temp {
-        font-size: 1rem !important;
+        font-size: 1.1rem !important;
       }
 
       .sensors-panel {
@@ -1224,6 +1230,11 @@
 
     function toggleTheme() {
       const isDark = document.body.classList.toggle('dark-theme');
+      document.documentElement.classList.toggle('dark-theme', isDark);
+      const metaTheme = document.getElementById('metaThemeColor');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', isDark ? '#181c22' : '#dbe0d7');
+      }
       const lightBtn = document.getElementById('themeBtnLight');
       const darkBtn = document.getElementById('themeBtnDark');
       if (isDark) {
@@ -1237,7 +1248,7 @@
 
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().then(() => {
+        document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => {
           document.body.classList.add('is-fullscreen');
         }).catch(() => {
           document.body.classList.toggle('is-fullscreen');
