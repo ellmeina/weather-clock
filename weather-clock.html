@@ -591,25 +591,30 @@
       box-shadow: none !important;
       display: flex !important;
       flex-direction: column !important;
-      overflow-y: auto !important;
+      overflow: hidden !important;
     }
 
     body.is-fullscreen .dashboard-grid {
-      height: calc(100% - 34px) !important;
-      min-height: 440px !important;
+      height: calc(100% - 30px) !important;
+      min-height: 0 !important;
       grid-template-columns: 1.05fr 1.25fr 1fr !important;
+      grid-template-rows: 100% !important;
     }
 
     @media (max-width: 600px) and (orientation: portrait) {
+      body.is-fullscreen .screen-container {
+        overflow-y: auto !important;
+      }
       body.is-fullscreen .dashboard-grid {
         height: auto !important;
         grid-template-columns: 1fr !important;
+        grid-template-rows: auto !important;
       }
     }
 
     /* スマホ・タブレットの横向き時、および高さが低い画面で3カラムを1画面に完全収納 */
     @media (orientation: landscape) and (max-height: 750px), (orientation: landscape) and (max-width: 1100px) {
-      html, body {
+      html, body, body.is-fullscreen {
         padding: 0 !important;
         margin: 0 !important;
         background-color: var(--screen-bg) !important;
@@ -618,7 +623,8 @@
         height: 100% !important;
       }
 
-      .screen-container {
+      .screen-container,
+      body.is-fullscreen .screen-container {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
@@ -636,14 +642,16 @@
         overflow: hidden !important;
       }
 
-      .status-bar {
+      .status-bar,
+      body.is-fullscreen .status-bar {
         padding: 0.2rem 0.65rem !important;
         font-size: 0.76rem !important;
         height: 30px !important;
         flex: 0 0 30px !important;
       }
 
-      .dashboard-grid {
+      .dashboard-grid,
+      body.is-fullscreen .dashboard-grid {
         height: calc(100% - 30px) !important;
         min-height: 0 !important;
         flex: none !important;
@@ -734,12 +742,14 @@
       }
 
       .metrics-list-panel {
-        padding: 0.25rem 0.45rem !important;
-        gap: 0.1rem !important;
+        padding: 0.2rem 0.45rem !important;
+        gap: 0.08rem !important;
+        flex: 1 !important;
+        min-height: 0 !important;
       }
 
       .metric-row {
-        padding-bottom: 0.1rem !important;
+        padding-bottom: 0.08rem !important;
         font-size: 0.74rem !important;
       }
 
@@ -753,6 +763,8 @@
 
       .weekly-list-panel {
         padding: 0.2rem 0.4rem !important;
+        flex: 1 !important;
+        min-height: 0 !important;
       }
 
       .forecast-row {
