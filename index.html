@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#dbe0d7" id="metaThemeColor">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"気象ステーション","short_name":"天気時計","display":"fullscreen","orientation":"landscape","background_color":"#dbe0d7","theme_color":"#dbe0d7"}'>
+  <title>気象ステーション & デジタル時計</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+
+    :root {
+      --clock-font: 'Share Tech Mono', monospace;
+      --clock-size: 4.65rem;
+      --clock-sec-size: 1.65rem;
+      /* 3カラム比率 (左: 時計 / 中: 詳細 / 右: 週間)。中央は値が短く余白が多いため左へ幅を回す */
+      --grid-cols: 1.35fr 1fr 0.95fr;
+      --body-bg: #1c2024;
+      --screen-bg: #dbe0d7;
+      --panel-bg: rgba(255, 255, 255, 0.45);
+      --ink-primary: #181d20;
+      --ink-secondary: #4a5258;
+      --ink-muted: #6e7780;
+      --border-color: #9ea7ae;
+      --border-dark: #636b73;
+      --highlight: #212529;
+      --accent-today: rgba(0, 0, 0, 0.06);
+    }
+
+    html.dark-theme,
+    body.dark-theme {
+      --body-bg: #090b0e;
+      --screen-bg: #181c22;
+      --panel-bg: rgba(255, 255, 255, 0.05);
+      --ink-primary: #f0f3f6;
+      --ink-secondary: #9da7b3;
+      --ink-muted: #6e7987;
+      --border-color: #313844;
+      --border-dark: #444e5f;
+      --highlight: #ffffff;
+      --accent-today: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html {
+      background-color: var(--screen-bg);
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      background-color: var(--screen-bg);
+      font-family: 'Zen Kaku Gothic New', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+      color: var(--ink-primary);
+      transition: background-color 0.3s;
+    }
+
+    /* 上部ステータスバー コントロール群 (左揃え順序配置) */
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+    }
+
+    .location-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .theme-toggle-switch {
+      display: inline-flex;
+      align-items: center;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5px;
+      cursor: pointer;
+      height: 24px;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .theme-toggle-switch:hover {
+      border-color: var(--border-dark);
+    }
+
+    .theme-switch-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 19px;
+      border-radius: 11px;
+      color: var(--ink-muted);
+      transition: all 0.2s;
+    }
+
+    .theme-switch-btn.active {
+      background: var(--ink-primary);
+      color: var(--screen-bg);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .theme-svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .status-icon-btn {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      color: var(--ink-primary);
+      border-radius: 6px;
+      width: 26px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.2s, border-color 0.2s;
+      padding: 0;
+    }
+
+    .status-icon-btn:hover {
+      border-color: var(--border-dark);
+    }
+
+    /* ディスプレイ画面本体 */
+    .screen-container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--screen-bg);
+      border: 2px solid var(--border-dark);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    /* 1. トップステータスバー */
+    .status-bar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 0.45rem 0.85rem;
+      border-bottom: 1.5px solid var(--border-color);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+    }
+
+    .city-dropdown {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--ink-primary);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.84rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .update-time {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--ink-secondary);
+      font-size: 0.85rem;
+      margin-left: 0.4rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+    }
+
+    /* 取得中: 更新アイコンを回転 */
+    .update-time.is-loading svg {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 取得失敗: 前回データを残したまま「!」マークを表示 */
+    .update-time.is-error::after {
+      content: '!';
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--ink-primary);
+      color: var(--screen-bg);
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    /* 2. メイン3カラムレイアウト */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: var(--grid-cols);
+      min-height: 440px;
+    }
+
+    /* 縦向き（ポートレート）の狭い画面のみ縦1列に積む。横向き時は常に3カラムを維持 */
+    @media (max-width: 600px) and (orientation: portrait) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .grid-col {
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      min-width: 0;
+    }
+
+    .border-right {
+      border-right: 1.5px solid var(--border-color);
+    }
+
+    @media (max-width: 600px) and (orientation: portrait) {
+      .border-right {
+        border-right: none;
+        border-bottom: 1.5px solid var(--border-color);
+      }
+    }
+
+    /* === 左列: 時計 & 今日の基本 (寸足らず解消・高さ均等配置) === */
+    .left-col {
+      justify-content: space-between;
+    }
+
+    .clock-panel {
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.75rem 0.85rem;
+      background: var(--panel-bg);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    /* 日付・曜日の文字スタイル */
+    .date-str {
+      font-size: 1.08rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      min-height: 1.85rem;
+    }
+
+    .day-badge {
+      background: var(--ink-primary);
+      color: var(--screen-bg);
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 0.88rem;
+      letter-spacing: 0.5px;
+      margin-left: 0.5rem;
+      display: inline-block;
+      line-height: 1.25;
+    }
+
+    .digital-clock {
+      font-family: var(--clock-font);
+      font-size: var(--clock-size);
+      font-weight: 700;
+      line-height: 1.05;
+      margin: 0.25rem 0 0.45rem;
+      letter-spacing: 1.5px;
+      color: var(--highlight);
+      display: flex;
+      align-items: baseline;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .clock-sec {
+      font-size: var(--clock-sec-size);
+      margin-left: 0.25rem;
+      color: var(--ink-secondary);
+    }
+
+    /* 天気名と温度を少し拡大・アイコンとの間隔を広げて右へ配置 */
+    .today-summary-row {
+      display: flex;
+      align-items: center;
+      gap: 1.35rem;
+      border-top: 1px dashed var(--border-color);
+      padding-top: 0.6rem;
+      padding-left: 0.25rem;
+    }
+
+    .summary-icon {
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+
+    .summary-desc-temp {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      margin-left: 0.25rem;
+    }
+
+    .summary-desc {
+      font-size: 1.53rem;
+      font-weight: 700;
+    }
+
+    .summary-temp {
+      font-size: 2.02rem;
+      font-weight: 800;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* 温湿度パネル (にっこりマーク削除・フォント最適化) */
+    .sensors-panel {
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.75rem 0.85rem;
+      background: var(--panel-bg);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .sensor-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .sensor-label {
+      color: var(--ink-secondary);
+      font-size: 0.88rem;
+      width: 46px;
+    }
+
+    .sensor-values {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: grid;
+      grid-template-columns: 5.8em 4.6em;
+      align-items: center;
+      gap: 0.6rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sensor-val-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* 日の出・日の入り */
+    .sun-cycle-panel {
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.65rem 0.85rem;
+      background: var(--panel-bg);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .sun-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem;
+    }
+
+    /* === 中央列: 詳細気象データ === */
+    .air-quality-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr 1.1fr;
+      gap: 0.4rem;
+      text-align: center;
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.55rem 0.4rem;
+      background: var(--panel-bg);
+    }
+
+    .aqi-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .aqi-title {
+      font-size: 0.72rem;
+      color: var(--ink-secondary);
+      font-weight: 700;
+    }
+
+    .aqi-val {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .metrics-list-panel {
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.65rem 0.8rem;
+      background: var(--panel-bg);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      gap: 0.35rem;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-bottom: 1px dotted rgba(0, 0, 0, 0.12);
+      padding-bottom: 0.35rem;
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .metric-name {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--ink-secondary);
+      font-size: 0.84rem;
+    }
+
+    .metric-val {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+    }
+
+    /* === 右列: 週間予報 === */
+    .weekly-list-panel {
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      background: var(--panel-bg);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .forecast-row {
+      display: grid;
+      grid-template-columns: 32px 1fr 1fr;
+      align-items: center;
+      padding: 0.35rem 0.4rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      font-size: 0.88rem;
+      font-weight: 700;
+      border-radius: 4px;
+    }
+
+    .forecast-row:last-child {
+      border-bottom: none;
+    }
+
+    .forecast-row.is-today {
+      background: var(--accent-today);
+      border: 1px solid var(--border-color);
+    }
+
+    .forecast-icon-wrap {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 曜日の下に降水確率 */
+    .day-and-rain-col {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      padding-left: 0.4rem;
+    }
+
+    .day-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .rain-under-day {
+      font-size: 0.74rem;
+      color: var(--ink-secondary);
+      font-family: 'Share Tech Mono', monospace;
+      font-weight: 700;
+      min-height: 0.9rem;
+    }
+
+    /* 温度の下に「今日」タグ */
+    .temp-and-tag-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.1rem;
+    }
+
+    .temp-range-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.98rem;
+      font-weight: 800;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .tag-under-temp {
+      font-size: 0.72rem;
+      color: var(--ink-secondary);
+      font-weight: 700;
+      min-height: 0.9rem;
+    }
+
+    /* モノクロ・シンプルなインラインSVGアイコン */
+    .mono-svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    /* === 全画面表示 ＆ スマホ横向きディスプレイ完全フィット対応 === */
+    :fullscreen, ::backdrop {
+      background-color: var(--screen-bg);
+    }
+
+    body.is-fullscreen {
+      padding: 0 !important;
+      margin: 0 !important;
+      background-color: var(--screen-bg) !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    body.is-fullscreen .screen-container {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+    }
+
+    body.is-fullscreen .dashboard-grid {
+      height: calc(100% - 30px) !important;
+      min-height: 0 !important;
+      grid-template-columns: var(--grid-cols) !important;
+      grid-template-rows: 100% !important;
+    }
+
+    @media (max-width: 600px) and (orientation: portrait) {
+      body.is-fullscreen .screen-container {
+        overflow-y: auto !important;
+      }
+      body.is-fullscreen .dashboard-grid {
+        height: auto !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto !important;
+      }
+    }
+
+    /* スマホ・タブレットの横向き時、および高さが低い画面で3カラムを1画面に完全収納 */
+    @media (orientation: landscape) and (max-height: 750px), (orientation: landscape) and (max-width: 1100px) {
+      html, body, body.is-fullscreen {
+        padding: 0 !important;
+        margin: 0 !important;
+        background-color: var(--screen-bg) !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .screen-container,
+      body.is-fullscreen .screen-container {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+
+      .status-bar,
+      body.is-fullscreen .status-bar {
+        padding: 0.2rem 0.65rem !important;
+        font-size: 0.76rem !important;
+        height: 30px !important;
+        flex: 0 0 30px !important;
+      }
+
+      .dashboard-grid,
+      body.is-fullscreen .dashboard-grid {
+        height: calc(100% - 30px) !important;
+        min-height: 0 !important;
+        flex: none !important;
+        grid-template-columns: var(--grid-cols) !important;
+        grid-template-rows: 100% !important;
+      }
+
+      .grid-col {
+        padding: 0.25rem 0.45rem !important;
+        gap: 0.2rem !important;
+        justify-content: space-between !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .clock-panel {
+        padding: 0.45rem 0.55rem !important;
+        gap: 0.15rem !important;
+        flex: 0 0 auto !important;
+        justify-content: flex-start !important;
+      }
+
+      .date-str {
+        font-size: 0.95rem !important;
+        min-height: 1.3rem !important;
+      }
+
+      .digital-clock {
+        font-size: clamp(3.4rem, 8.2vw, 4.8rem) !important;
+        line-height: 1 !important;
+        letter-spacing: 0.5px !important;
+        margin: 0.15rem 0 0.25rem !important;
+      }
+
+      .clock-sec {
+        font-size: clamp(1.3rem, 2.7vw, 1.7rem) !important;
+        margin-left: 0.2rem !important;
+      }
+
+      .today-summary-row {
+        gap: 0.85rem !important;
+        padding-top: 0.35rem !important;
+      }
+
+      .summary-icon {
+        width: 57px !important;
+        height: 57px !important;
+      }
+
+      .summary-desc {
+        font-size: 1.35rem !important;
+      }
+
+      .summary-temp {
+        font-size: 1.77rem !important;
+      }
+
+      .sensors-panel {
+        padding: 0.4rem 0.55rem !important;
+        gap: 0.3rem !important;
+        flex: 0 0 auto !important;
+      }
+
+      .sensor-row {
+        font-size: 0.84rem !important;
+      }
+
+      .sensor-values {
+        font-size: 1.02rem !important;
+      }
+
+      .sun-cycle-panel {
+        padding: 0.35rem 0.55rem !important;
+        flex: 0 0 auto !important;
+      }
+
+      .sun-item {
+        font-size: 0.94rem !important;
+      }
+
+      .air-quality-row {
+        padding: 0.2rem 0.3rem !important;
+      }
+
+      .aqi-title {
+        font-size: 0.65rem !important;
+      }
+
+      .aqi-val {
+        font-size: 0.85rem !important;
+      }
+
+      .metrics-list-panel {
+        padding: 0.2rem 0.45rem !important;
+        gap: 0.08rem !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+      }
+
+      .metric-row {
+        padding-bottom: 0.08rem !important;
+        font-size: 0.74rem !important;
+      }
+
+      .metric-name {
+        font-size: 0.74rem !important;
+      }
+
+      .metric-val {
+        font-size: 0.85rem !important;
+      }
+
+      .weekly-list-panel {
+        padding: 0.2rem 0.4rem !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+      }
+
+      .forecast-row {
+        padding: 0.08rem 0.2rem !important;
+        font-size: 0.74rem !important;
+      }
+
+      .forecast-icon-wrap {
+        width: 19px !important;
+        height: 19px !important;
+      }
+
+      .day-title {
+        font-size: 0.74rem !important;
+        line-height: 1.05 !important;
+      }
+
+      .rain-under-day {
+        font-size: 0.62rem !important;
+        min-height: 0.65rem !important;
+        line-height: 1 !important;
+      }
+
+      .temp-range-text {
+        font-size: 0.8rem !important;
+        line-height: 1.05 !important;
+      }
+
+      .tag-under-temp {
+        font-size: 0.62rem !important;
+        min-height: 0.65rem !important;
+        line-height: 1 !important;
+      }
+    }
+
+    /* 時計を左パネル幅いっぱいに自動フィット (コンテナクエリ単位 cqi)
+       非対応ブラウザでは上の rem / vw 指定がそのまま使われる */
+    @supports (font-size: 1cqi) {
+      .clock-panel {
+        container-type: inline-size;
+      }
+
+      .digital-clock,
+      body.is-fullscreen .digital-clock {
+        font-size: clamp(3.4rem, 31cqi, 9rem) !important;
+        letter-spacing: 0 !important;
+      }
+
+      .clock-sec,
+      body.is-fullscreen .clock-sec {
+        font-size: 0.36em !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ディスプレイ画面本体 (外側の余分なバーなし) -->
+  <div class="screen-container">
+
+    <!-- 1. トップステータスバー (左から: 全画面 → テーマ選択 → ロケーション → 更新 の順) -->
+    <div class="status-bar">
+      <div class="status-left">
+        <!-- 1. 全画面 -->
+        <button class="status-icon-btn" onclick="toggleFullscreen()" title="全画面表示">
+          <span>⛶</span>
+        </button>
+
+        <!-- 2. テーマ選択 (トグルスイッチ) -->
+        <div class="theme-toggle-switch" onclick="toggleTheme()" title="テーマ切替 (ライト/ダーク)" role="button">
+          <div class="theme-switch-btn active" id="themeBtnLight" title="ライトモード">
+            <svg class="theme-svg" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="4"></circle>
+              <line x1="12" y1="2" x2="12" y2="4"></line>
+              <line x1="12" y1="20" x2="12" y2="22"></line>
+              <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line>
+              <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+              <line x1="2" y1="12" x2="4" y2="12"></line>
+              <line x1="20" y1="12" x2="22" y2="12"></line>
+              <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"></line>
+              <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"></line>
+            </svg>
+          </div>
+          <div class="theme-switch-btn" id="themeBtnDark" title="ダークモード">
+            <svg class="theme-svg" viewBox="0 0 24 24">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 3. ロケーション (地域ドロップダウン) -->
+        <div class="location-box">
+          <svg class="mono-svg" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <select class="city-dropdown" id="citySelect">
+            <option value="35.6895,139.6917" selected>東京</option>
+            <option value="43.0618,141.3545">札幌</option>
+            <option value="38.2682,140.8694">仙台</option>
+            <option value="35.1815,136.9066">名古屋</option>
+            <option value="34.6937,135.5023">大阪</option>
+            <option value="34.3853,132.4553">広島</option>
+            <option value="33.5904,130.4017">福岡</option>
+            <option value="26.2124,127.6809">那覇</option>
+          </select>
+        </div>
+
+        <!-- 4. 更新アイコン ＆ 時刻 -->
+        <span class="update-time" id="updateTimeTag" onclick="triggerFetch()" title="クリックで再取得">
+          <svg class="mono-svg" style="width:14px;height:14px;" viewBox="0 0 24 24">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+            <polyline points="21 3 21 9 15 9"></polyline>
+          </svg>
+          <span id="updateTimeText">00:00</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- 2. メイン3カラムグリッド -->
+    <div class="dashboard-grid">
+
+      <!-- 左列: 時計 & 今日の基本情報 (寸足らず解消・文字サイズ調整) -->
+      <div class="grid-col border-right left-col">
+        
+        <!-- 時計パネル -->
+        <div class="clock-panel">
+          <div class="date-str" id="dateStr">2026-10-25 日曜日</div>
+          <div class="digital-clock">
+            <span id="timeHoursMins">08:30</span>
+            <span class="clock-sec" id="timeSecs">:00</span>
+          </div>
+          <div class="today-summary-row">
+            <div class="summary-icon" id="todayIconWrap"></div>
+            <div class="summary-desc-temp">
+              <span class="summary-desc" id="todayDesc">薄曇り</span>
+              <span class="summary-temp" id="todayTempRange">25/16℃</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 温湿度パネル (にっこりマーク削除) -->
+        <div class="sensors-panel">
+          <div class="sensor-row">
+            <span class="sensor-label">室外</span>
+            <div class="sensor-values">
+              <span class="sensor-val-item">
+                <svg class="mono-svg" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+                <span id="outdoorTemp">25.0</span>℃
+              </span>
+              <span class="sensor-val-item">
+                <svg class="mono-svg" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                <span id="outdoorHum">55</span>%
+              </span>
+            </div>
+          </div>
+          <div class="sensor-row">
+            <span class="sensor-label">体感</span>
+            <div class="sensor-values">
+              <span class="sensor-val-item">
+                <svg class="mono-svg" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+                <span id="apparentTemp">24.5</span>℃
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 日の出・日の入り (上向き矢印・下向き矢印付きの分かりやすいモノクロアイコン) -->
+        <div class="sun-cycle-panel">
+          <div class="sun-item" title="日の出">
+            <svg class="mono-svg" style="width:22px;height:22px;overflow:visible;" viewBox="0 0 24 24">
+              <!-- 上向き矢印 (昇る太陽) -->
+              <polyline points="8.5 5 12 1.5 15.5 5"></polyline>
+              <line x1="12" y1="1.5" x2="12" y2="9"></line>
+              <!-- 地平線と半円の太陽 -->
+              <path d="M7 18a5 5 0 0 1 10 0"></path>
+              <line x1="2" y1="18" x2="22" y2="18"></line>
+              <line x1="5" y1="21.5" x2="19" y2="21.5"></line>
+              <!-- 斜め光線 -->
+              <line x1="4.2" y1="11.2" x2="5.8" y2="12.8"></line>
+              <line x1="19.8" y1="11.2" x2="18.2" y2="12.8"></line>
+            </svg>
+            <span id="sunriseTime">05:55</span>
+          </div>
+          <div class="sun-item" title="日の入り">
+            <svg class="mono-svg" style="width:22px;height:22px;overflow:visible;" viewBox="0 0 24 24">
+              <!-- 下向き矢印 (沈む太陽) -->
+              <polyline points="8.5 6 12 9.5 15.5 6"></polyline>
+              <line x1="12" y1="1.5" x2="12" y2="9.5"></line>
+              <!-- 地平線と半円の太陽 -->
+              <path d="M7 18a5 5 0 0 1 10 0"></path>
+              <line x1="2" y1="18" x2="22" y2="18"></line>
+              <line x1="5" y1="21.5" x2="19" y2="21.5"></line>
+              <!-- 斜め光線 -->
+              <line x1="4.2" y1="11.2" x2="5.8" y2="12.8"></line>
+              <line x1="19.8" y1="11.2" x2="18.2" y2="12.8"></line>
+            </svg>
+            <span id="sunsetTime">16:55</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 中央列: 詳細気象データ -->
+      <div class="grid-col border-right">
+
+        <!-- 空気質インジケーター -->
+        <div class="air-quality-row">
+          <div class="aqi-block" title="米国AQI (0-500)">
+            <span class="aqi-title">AQI</span>
+            <span class="aqi-val" id="aqiVal">--</span>
+          </div>
+          <div class="aqi-block">
+            <span class="aqi-title">PM2.5</span>
+            <span class="aqi-val" id="pm25Val">--</span>
+          </div>
+          <div class="aqi-block" title="3時間前との気圧の差">
+            <span class="aqi-title">気圧の差</span>
+            <span class="aqi-val" id="pressureDiffVal">--</span>
+          </div>
+        </div>
+
+        <!-- 気象メトリクスリスト -->
+        <div class="metrics-list-panel">
+          <div class="metric-row">
+            <span class="metric-name">
+              <svg class="mono-svg" viewBox="0 0 24 24"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+              気圧
+            </span>
+            <span class="metric-val" id="pressureVal">1013 hPa</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">
+              <svg class="mono-svg" viewBox="0 0 24 24"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path></svg>
+              風速
+            </span>
+            <span class="metric-val" id="windSpeedVal">3.2 m/s</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">
+              <svg class="mono-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+              風向
+            </span>
+            <span class="metric-val" id="windDirVal">南南東 165°</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">
+              <svg class="mono-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2m-7.07-2.93l1.41-1.41m11.32-11.32l1.41-1.41M2 12h2m16 0h2m-2.93 7.07l-1.41-1.41m-11.32-11.32l-1.41-1.41"></path></svg>
+              UV指数
+            </span>
+            <span class="metric-val" id="uvVal">3 (中程度)</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">
+              <svg class="mono-svg" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+              降水量
+            </span>
+            <span class="metric-val" id="rainAmountVal">0.0 mm</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">
+              <svg class="mono-svg" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              視程
+            </span>
+            <span class="metric-val" id="visibilityVal">--</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 右列: 週間予報 (降水確率は10%単位に四捨五入) -->
+      <div class="grid-col">
+        <div class="weekly-list-panel" id="weeklyListContainer">
+          <!-- 7日分のリスト行 -->
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // 1. 時計リアルタイム更新
+    function updateClock() {
+      const now = new Date();
+      const days = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+      
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
+      const dayIdx = now.getDay();
+      const dayName = days[dayIdx];
+
+      const hours = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+
+      // 2番スタイル: デジタル等幅日付 + 太字漢字曜日
+      document.getElementById('dateStr').innerHTML = `
+        <span style="font-family: 'Share Tech Mono', monospace; font-size: 1.18rem; letter-spacing: 1px;">${year}.${month}.${date}</span>
+        <span style="font-size: 1.05rem; font-weight: 800; margin-left: 0.5rem;">${dayName}</span>
+      `;
+
+      document.getElementById('timeHoursMins').textContent = `${hours}:${mins}`;
+      document.getElementById('timeSecs').textContent = `:${secs}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. モノクロ線画 SVG 天気アイコン集
+    const monoWeatherIcons = {
+      // 快晴・晴れ: くっきりした太陽と8方向の光線
+      sun: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1.5" x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22.5"></line>
+          <line x1="4.5" y1="4.5" x2="6.3" y2="6.3"></line>
+          <line x1="17.7" y1="17.7" x2="19.5" y2="19.5"></line>
+          <line x1="1.5" y1="12" x2="4" y2="12"></line>
+          <line x1="20" y1="12" x2="22.5" y2="12"></line>
+          <line x1="4.5" y1="19.5" x2="6.3" y2="17.7"></line>
+          <line x1="17.7" y1="6.3" x2="19.5" y2="4.5"></line>
+        </svg>
+      `,
+      // 薄曇り・晴れ時々曇: 左上に太陽、手前に閉じた雲
+      partlyCloudy: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <!-- 左上の太陽と光線 -->
+          <path d="M4.6 11.2a4 4 0 1 1 6.2-4.4"></path>
+          <line x1="7.5" y1="1.5" x2="7.5" y2="3.2"></line>
+          <line x1="2.8" y1="3.5" x2="4" y2="4.7"></line>
+          <line x1="1" y1="8" x2="2.7" y2="8"></line>
+          <line x1="12.2" y1="3.5" x2="11" y2="4.7"></line>
+          <!-- 手前の雲 -->
+          <path d="M8 19h10a3.8 3.8 0 0 0 .5-7.56A5.2 5.2 0 0 0 8.4 9.8 4.2 4.2 0 0 0 8 19z"></path>
+        </svg>
+      `,
+      // 曇り: 2つ重なった厚みのある雲
+      cloud: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <!-- 奥の小さな雲 -->
+          <path d="M15.5 7.5a4 4 0 0 1 5.5 3.7 3 3 0 0 1-.5 5.8"></path>
+          <!-- 手前のメインの雲 -->
+          <path d="M6.5 19h10.5a4 4 0 0 0 .5-7.96A5.5 5.5 0 0 0 6.8 9.5a4.5 4.5 0 0 0-.3 9.5z"></path>
+        </svg>
+      `,
+      // 霧: 雲＋水平の霧ライン
+      fog: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <path d="M6.5 14h11a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 5.5a4 4 0 0 0-1.7 8.5z"></path>
+          <line x1="4" y1="17.5" x2="20" y2="17.5"></line>
+          <line x1="6" y1="21" x2="18" y2="21"></line>
+        </svg>
+      `,
+      // 雨: 閉じた雲＋斜めに降る3本の雨粒ライン
+      rain: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <path d="M6.5 14.5h11a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 6a4 4 0 0 0-1.7 8.5z"></path>
+          <line x1="8.5" y1="17.2" x2="7" y2="21.5"></line>
+          <line x1="13" y1="17.2" x2="11.5" y2="21.5"></line>
+          <line x1="17.5" y1="17.2" x2="16" y2="21.5"></line>
+        </svg>
+      `,
+      // 雪: 閉じた雲＋雪の結晶マーク
+      snow: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <path d="M6.5 14.5h11a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 6a4 4 0 0 0-1.7 8.5z"></path>
+          <path d="M8 17.5v4M6.3 18.5l3.4 2M9.7 18.5l-3.4 2"></path>
+          <path d="M16 17.5v4M14.3 18.5l3.4 2M17.7 18.5l-3.4 2"></path>
+        </svg>
+      `,
+      // 雷雨: 閉じた雲＋塗りつぶしの稲妻マーク
+      thunder: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="width:100%;height:100%;overflow:visible;">
+          <path d="M6.5 14h11a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 5.5a4 4 0 0 0-1.7 8.5z"></path>
+          <polygon points="13 14.5 9.5 19 12.5 19 11 23 16 17.8 12.8 17.8" fill="currentColor" stroke="none"></polygon>
+        </svg>
+      `
+    };
+
+    function getWeatherInfo(code) {
+      if (code === 0) return { desc: '快晴', icon: monoWeatherIcons.sun };
+      if (code === 1 || code === 2) return { desc: '薄曇り', icon: monoWeatherIcons.partlyCloudy };
+      if (code === 3) return { desc: '曇り', icon: monoWeatherIcons.cloud };
+      if (code === 45 || code === 48) return { desc: '霧', icon: monoWeatherIcons.fog };
+      if ((code >= 51 && code <= 65) || (code >= 80 && code <= 82)) return { desc: '雨', icon: monoWeatherIcons.rain };
+      if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { desc: '雪', icon: monoWeatherIcons.snow };
+      if (code >= 95) return { desc: '雷雨', icon: monoWeatherIcons.thunder };
+      return { desc: '曇り', icon: monoWeatherIcons.cloud };
+    }
+
+    function getWindDirectionText(deg) {
+      const dirs = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+      const index = Math.round((deg % 360) / 22.5) % 16;
+      return `${dirs[index]} ${Math.round(deg)}°`;
+    }
+
+    // 3. 気象データ取得
+    const FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
+    const AIR_QUALITY_API = 'https://air-quality-api.open-meteo.com/v1/air-quality';
+    const FETCH_TIMEOUT_MS = 15000;
+    let currentFetchController = null;
+
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    // null / undefined / NaN を '--' に置き換えて数値整形
+    function fmtNum(value, digits = 0) {
+      return (typeof value === 'number' && Number.isFinite(value)) ? value.toFixed(digits) : '--';
+    }
+
+    function formatHHMM(date) {
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    // 視程 (m) → 表示文字列
+    function formatVisibility(meters) {
+      if (typeof meters !== 'number' || !Number.isFinite(meters)) return '--';
+      if (meters >= 10000) return '> 10 km';
+      if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
+      return `${Math.round(meters)} m`;
+    }
+
+    // UV指数 → 数値 + レベル (WHO区分、四捨五入後の値で判定)
+    function formatUv(uv) {
+      if (typeof uv !== 'number' || !Number.isFinite(uv)) return '--';
+      const v = Math.round(uv);
+      let level;
+      if (v <= 2) level = '低';
+      else if (v <= 5) level = '中程度';
+      else if (v <= 7) level = '高';
+      else if (v <= 10) level = '非常に高';
+      else level = '極端';
+      return `${v} (${level})`;
+    }
+
+    // 当日 0:00 から現在時刻までの積算降水量 (hourly.precipitation は直前1時間の合計値)
+    function sumTodayPrecipitation(hourly, currentTime) {
+      if (!hourly || !hourly.time || !hourly.precipitation || !currentTime) return null;
+      const today = currentTime.slice(0, 10);
+      const dayStart = `${today}T00:00`;
+      let sum = 0;
+      for (let i = 0; i < hourly.time.length; i++) {
+        const t = hourly.time[i];
+        if (t > dayStart && t <= currentTime && t.startsWith(today)) {
+          sum += hourly.precipitation[i] ?? 0;
+        }
+      }
+      return sum;
+    }
+
+    // 現在時刻に対応する時刻とその3時間前の気圧差 (例: ↓ -3hPa)
+    function formatPressureDiff(hourly, currentTime) {
+      if (!hourly || !hourly.time || !hourly.pressure_msl || !currentTime) return '--';
+      const curHour = `${currentTime.slice(0, 13)}:00`;
+      let idx = hourly.time.indexOf(curHour);
+      if (idx === -1) {
+        for (let i = hourly.time.length - 1; i >= 0; i--) {
+          if (hourly.time[i] <= currentTime) {
+            idx = i;
+            break;
+          }
+        }
+      }
+      if (idx < 3) return '--';
+      const nowP = hourly.pressure_msl[idx];
+      const prevP = hourly.pressure_msl[idx - 3];
+      if (typeof nowP !== 'number' || !Number.isFinite(nowP) || typeof prevP !== 'number' || !Number.isFinite(prevP)) {
+        return '--';
+      }
+      const diff = Math.round(nowP - prevP);
+      if (diff > 0) return `↑ +${diff}hPa`;
+      if (diff < 0) return `↓ ${diff}hPa`;
+      return '→ 0hPa';
+    }
+
+    // 'YYYY-MM-DD' の曜日を端末のタイムゾーンに依存せず求める
+    function getDayIndexFromDateStr(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    }
+
+    async function fetchJson(url, signal) {
+      const res = await fetch(url, { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data && data.error) throw new Error(data.reason || 'API error');
+      return data;
+    }
+
+    function renderWeather(data) {
+      const current = data.current;
+      const daily = data.daily;
+
+      // 左列: 今日の基本情報
+      const curWeather = getWeatherInfo(current.weather_code);
+      document.getElementById('todayIconWrap').innerHTML = curWeather.icon;
+      setText('todayDesc', curWeather.desc);
+      setText('todayTempRange', `${fmtNum(daily.temperature_2m_max[0])}/${fmtNum(daily.temperature_2m_min[0])}℃`);
+
+      setText('outdoorTemp', fmtNum(current.temperature_2m, 1));
+      setText('outdoorHum', fmtNum(current.relative_humidity_2m));
+      setText('apparentTemp', fmtNum(current.apparent_temperature, 1));
+
+      if (daily.sunrise && daily.sunrise[0]) {
+        setText('sunriseTime', daily.sunrise[0].split('T')[1].substring(0, 5));
+      }
+      if (daily.sunset && daily.sunset[0]) {
+        setText('sunsetTime', daily.sunset[0].split('T')[1].substring(0, 5));
+      }
+
+      // 中央列: 詳細気象
+      setText('pressureDiffVal', formatPressureDiff(data.hourly, current.time));
+      setText('windSpeedVal', `${fmtNum(current.wind_speed_10m, 1)} m/s`);
+      setText('windDirVal', Number.isFinite(current.wind_direction_10m) ? getWindDirectionText(current.wind_direction_10m) : '--');
+      setText('uvVal', formatUv(daily.uv_index_max ? daily.uv_index_max[0] : null));
+      setText('rainAmountVal', `${fmtNum(sumTodayPrecipitation(data.hourly, current.time), 1)} mm`);
+      setText('visibilityVal', formatVisibility(current.visibility));
+      setText('pressureVal', `${fmtNum(current.pressure_msl)} hPa`);
+
+      // 右列: 週間予報
+      // 「降水確率は10%単位に丸める (例: 88% -> 90%, 24% -> 20%)」
+      const daysShort = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+      const weeklyContainer = document.getElementById('weeklyListContainer');
+      let weeklyHtml = '';
+
+      for (let i = 0; i < daily.time.length; i++) {
+        const dayName = daysShort[getDayIndexFromDateStr(daily.time[i])];
+        const wInfo = getWeatherInfo(daily.weather_code[i]);
+        const maxT = fmtNum(daily.temperature_2m_max[i]);
+        const minT = fmtNum(daily.temperature_2m_min[i]);
+
+        // 10%単位に丸める (四捨五入)
+        const rawRain = daily.precipitation_probability_max ? (daily.precipitation_probability_max[i] ?? 0) : 0;
+        const roundedRain = Math.round(rawRain / 10) * 10;
+        const isToday = (i === 0);
+
+        const rainDisplay = roundedRain > 0 ? `${roundedRain}%` : '';
+        const tagDisplay = isToday ? '今日' : '';
+
+        weeklyHtml += `
+          <div class="forecast-row ${isToday ? 'is-today' : ''}">
+            <div class="forecast-icon-wrap" title="${wInfo.desc}">
+              ${wInfo.icon}
+            </div>
+
+            <div class="day-and-rain-col">
+              <span class="day-title">${dayName}</span>
+              <span class="rain-under-day">${rainDisplay}</span>
+            </div>
+
+            <div class="temp-and-tag-col">
+              <span class="temp-range-text">${maxT}/${minT}℃</span>
+              <span class="tag-under-temp">${tagDisplay}</span>
+            </div>
+          </div>
+        `;
+      }
+      weeklyContainer.innerHTML = weeklyHtml;
+    }
+
+    function renderAirQuality(data) {
+      const cur = data && data.current;
+      setText('aqiVal', cur ? fmtNum(cur.us_aqi) : '--');
+      setText('pm25Val', cur && Number.isFinite(cur.pm2_5) ? `${Math.round(cur.pm2_5)}µg/m³` : '--');
+    }
+
+    async function fetchWeather(lat, lon) {
+      // 都市の連続切替などで前のリクエストが残っていたら中断する
+      if (currentFetchController) currentFetchController.abort();
+      const controller = new AbortController();
+      currentFetchController = controller;
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      const updateTag = document.getElementById('updateTimeTag');
+      updateTag.classList.add('is-loading');
+
+      const weatherParams = new URLSearchParams({
+        latitude: lat,
+        longitude: lon,
+        current: 'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,visibility',
+        hourly: 'precipitation,pressure_msl',
+        daily: 'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max',
+        wind_speed_unit: 'ms',
+        timezone: 'Asia/Tokyo',
+        forecast_days: '7'
+      });
+      const airParams = new URLSearchParams({
+        latitude: lat,
+        longitude: lon,
+        current: 'us_aqi,pm2_5',
+        timezone: 'Asia/Tokyo'
+      });
+
+      try {
+        // 空気質APIが失敗しても天気表示は続行できるよう allSettled で並列取得
+        const [weatherResult, airResult] = await Promise.allSettled([
+          fetchJson(`${FORECAST_API}?${weatherParams}`, controller.signal),
+          fetchJson(`${AIR_QUALITY_API}?${airParams}`, controller.signal)
+        ]);
+        if (controller !== currentFetchController) return; // 新しいリクエストに置き換え済み
+
+        if (weatherResult.status !== 'fulfilled') throw weatherResult.reason;
+        renderWeather(weatherResult.value);
+
+        if (airResult.status === 'fulfilled') {
+          renderAirQuality(airResult.value);
+        } else {
+          console.warn('空気質データの取得に失敗しました', airResult.reason);
+          renderAirQuality(null);
+        }
+
+        // 取得に成功したときだけ最終更新時刻を更新する
+        setText('updateTimeText', formatHHMM(new Date()));
+        updateTag.classList.remove('is-error');
+        updateTag.title = 'クリックで再取得';
+      } catch (err) {
+        if (controller !== currentFetchController) return;
+        console.error('天気データの取得に失敗しました', err);
+        // 前回のデータは残したまま、更新時刻にエラー表示を付ける
+        updateTag.classList.add('is-error');
+        updateTag.title = `取得失敗 (${err.name === 'AbortError' ? 'タイムアウト' : err.message}) - クリックで再試行`;
+      } finally {
+        clearTimeout(timeoutId);
+        if (controller === currentFetchController) {
+          updateTag.classList.remove('is-loading');
+          currentFetchController = null;
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark-theme');
+      document.documentElement.classList.toggle('dark-theme', isDark);
+      const metaTheme = document.getElementById('metaThemeColor');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', isDark ? '#181c22' : '#dbe0d7');
+      }
+      const lightBtn = document.getElementById('themeBtnLight');
+      const darkBtn = document.getElementById('themeBtnDark');
+      if (isDark) {
+        lightBtn.classList.remove('active');
+        darkBtn.classList.add('active');
+      } else {
+        darkBtn.classList.remove('active');
+        lightBtn.classList.add('active');
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+          document.body.classList.add('is-fullscreen');
+        }).catch(() => {
+          document.body.classList.toggle('is-fullscreen');
+        });
+      } else {
+        document.exitFullscreen().then(() => {
+          document.body.classList.remove('is-fullscreen');
+        }).catch(() => {});
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        document.body.classList.remove('is-fullscreen');
+      } else {
+        document.body.classList.add('is-fullscreen');
+      }
+    });
+
+    const citySelect = document.getElementById('citySelect');
+    function triggerFetch() {
+      const [lat, lon] = citySelect.value.split(',');
+      fetchWeather(lat, lon);
+    }
+    citySelect.addEventListener('change', triggerFetch);
+
+    // 初回取得
+    triggerFetch();
+
+    // 30分（30分 × 60秒 × 1000ミリ秒）ごとに天気を自動更新
+    setInterval(triggerFetch, 30 * 60 * 1000);
+  </script>
+</body>
+</html>
