@@ -417,7 +417,7 @@
     /* === 中央列: 詳細気象データ === */
     .air-quality-row {
       display: grid;
-      grid-template-columns: 1fr 1.3fr 1.1fr;
+      grid-template-columns: 0.8fr 1.3fr 1.3fr;
       gap: 0.4rem;
       text-align: center;
       border: 1.5px solid var(--border-color);
@@ -433,15 +433,16 @@
     }
 
     .aqi-title {
-      font-size: 0.72rem;
+      font-size: 1.08rem;
       color: var(--ink-secondary);
       font-weight: 700;
     }
 
     .aqi-val {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 1.05rem;
+      font-size: 1.58rem;
       font-weight: 800;
+      white-space: nowrap;
     }
 
     .metrics-list-panel {
@@ -460,7 +461,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.88rem;
+      font-size: 1.32rem;
       font-weight: 600;
       border-bottom: 1px dotted rgba(0, 0, 0, 0.12);
       padding-bottom: 0.35rem;
@@ -476,12 +477,12 @@
       align-items: center;
       gap: 0.45rem;
       color: var(--ink-secondary);
-      font-size: 0.84rem;
+      font-size: 1.26rem;
     }
 
     .metric-val {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 1.05rem;
+      font-size: 1.58rem;
       font-weight: 700;
       color: var(--ink-primary);
     }
@@ -500,11 +501,11 @@
 
     .forecast-row {
       display: grid;
-      grid-template-columns: 32px 1fr 1fr;
+      grid-template-columns: 48px 1fr 1fr;
       align-items: center;
       padding: 0.35rem 0.4rem;
       border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-      font-size: 0.88rem;
+      font-size: 1.32rem;
       font-weight: 700;
       border-radius: 4px;
     }
@@ -519,8 +520,8 @@
     }
 
     .forecast-icon-wrap {
-      width: 26px;
-      height: 26px;
+      width: 39px;
+      height: 39px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -535,17 +536,17 @@
     }
 
     .day-title {
-      font-size: 0.86rem;
+      font-size: 1.29rem;
       font-weight: 700;
       line-height: 1.1;
     }
 
     .rain-under-day {
-      font-size: 0.74rem;
+      font-size: 1.11rem;
       color: var(--ink-secondary);
       font-family: 'Share Tech Mono', monospace;
       font-weight: 700;
-      min-height: 0.9rem;
+      min-height: 1.35rem;
     }
 
     /* 温度の下に「今日」タグ */
@@ -558,20 +559,25 @@
 
     .temp-range-text {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.98rem;
+      font-size: 1.47rem;
       font-weight: 800;
       line-height: 1.1;
       white-space: nowrap;
     }
 
     .tag-under-temp {
-      font-size: 0.72rem;
+      font-size: 1.08rem;
       color: var(--ink-secondary);
       font-weight: 700;
-      min-height: 0.9rem;
+      min-height: 1.35rem;
     }
 
     /* モノクロ・シンプルなインラインSVGアイコン */
+    .metric-name .mono-svg {
+      width: 25px;
+      height: 25px;
+    }
+
     .mono-svg {
       width: 17px;
       height: 17px;
@@ -760,11 +766,11 @@
       }
 
       .aqi-title {
-        font-size: 0.65rem !important;
+        font-size: 0.98rem !important;
       }
 
       .aqi-val {
-        font-size: 0.85rem !important;
+        font-size: 1.28rem !important;
       }
 
       .metrics-list-panel {
@@ -776,15 +782,15 @@
 
       .metric-row {
         padding-bottom: 0.08rem !important;
-        font-size: 0.74rem !important;
+        font-size: 1.11rem !important;
       }
 
       .metric-name {
-        font-size: 0.74rem !important;
+        font-size: 1.11rem !important;
       }
 
       .metric-val {
-        font-size: 0.85rem !important;
+        font-size: 1.28rem !important;
       }
 
       .weekly-list-panel {
@@ -795,33 +801,33 @@
 
       .forecast-row {
         padding: 0.08rem 0.2rem !important;
-        font-size: 0.74rem !important;
+        font-size: 1.11rem !important;
       }
 
       .forecast-icon-wrap {
-        width: 19px !important;
-        height: 19px !important;
+        width: 29px !important;
+        height: 29px !important;
       }
 
       .day-title {
-        font-size: 0.74rem !important;
+        font-size: 1.11rem !important;
         line-height: 1.05 !important;
       }
 
       .rain-under-day {
-        font-size: 0.62rem !important;
-        min-height: 0.65rem !important;
+        font-size: 0.93rem !important;
+        min-height: 0.98rem !important;
         line-height: 1 !important;
       }
 
       .temp-range-text {
-        font-size: 0.8rem !important;
+        font-size: 1.2rem !important;
         line-height: 1.05 !important;
       }
 
       .tag-under-temp {
-        font-size: 0.62rem !important;
-        min-height: 0.65rem !important;
+        font-size: 0.93rem !important;
+        min-height: 0.98rem !important;
         line-height: 1 !important;
       }
     }
@@ -1440,7 +1446,31 @@
       }
     }
 
+    // 画面スリープ防止 (Screen Wake Lock API)
+    let wakeLockSentinel = null;
+    async function requestWakeLock() {
+      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+      if (wakeLockSentinel && !wakeLockSentinel.released) return;
+      try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+          wakeLockSentinel = null;
+        });
+      } catch (e) {
+        // バッテリーセーバー有効時や非HTTPS環境では無視
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    });
+    document.addEventListener('pointerdown', requestWakeLock, { passive: true });
+    requestWakeLock();
+
     function toggleFullscreen() {
+      requestWakeLock();
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => {
           document.body.classList.add('is-fullscreen');
