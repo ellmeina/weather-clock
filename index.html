@@ -182,7 +182,6 @@
       font-weight: 700;
       font-size: 0.84rem;
       padding: 0.15rem 0.45rem;
-      min-width: 7.5em;
       border-radius: 4px;
       cursor: pointer;
       outline: none;
@@ -367,22 +366,22 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.9rem;
+      font-size: 1.19rem;
       font-weight: 700;
     }
 
     .sensor-label {
       color: var(--ink-secondary);
-      font-size: 0.88rem;
-      width: 46px;
+      font-size: 1.13rem;
+      width: 56px;
     }
 
     .sensor-values {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 1.15rem;
+      font-size: 1.42rem;
       font-weight: 700;
       display: grid;
-      grid-template-columns: 5.8em 4.6em;
+      grid-template-columns: 5.5em 4.2em;
       align-items: center;
       gap: 0.6rem;
       font-variant-numeric: tabular-nums;
@@ -394,17 +393,20 @@
       gap: 0.3rem;
     }
 
-    /* 日の出・日の入り */
-    .sun-cycle-panel {
-      border: 1.5px solid var(--border-color);
-      border-radius: 6px;
-      padding: 0.65rem 0.85rem;
-      background: var(--panel-bg);
+    .sensor-val-item .mono-svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    /* 日の出・日の入り (時計パネル下段の右側に2段表示) */
+    .sun-cycle-inline {
+      margin-left: auto;
+      padding-left: 0.9rem;
+      border-left: 1px dashed var(--border-color);
       display: flex;
-      justify-content: space-around;
-      align-items: center;
-      font-size: 0.92rem;
-      font-weight: 700;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.3rem;
     }
 
     .sun-item {
@@ -412,7 +414,8 @@
       align-items: center;
       gap: 0.45rem;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 1.05rem;
+      font-size: 1.38rem;
+      font-weight: 700;
     }
 
     /* === 中央列: 詳細気象データ === */
@@ -742,24 +745,31 @@
       .sensors-panel {
         padding: 0.4rem 0.55rem !important;
         gap: 0.3rem !important;
-        flex: 0 0 auto !important;
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-evenly !important;
       }
 
       .sensor-row {
-        font-size: 0.84rem !important;
+        font-size: 1rem !important;
+      }
+
+      .sensor-label {
+        font-size: 1rem !important;
       }
 
       .sensor-values {
-        font-size: 1.02rem !important;
+        font-size: 1.15rem !important;
       }
 
-      .sun-cycle-panel {
-        padding: 0.35rem 0.55rem !important;
-        flex: 0 0 auto !important;
+      .sun-cycle-inline {
+        padding-left: 0.65rem !important;
+        gap: 0.2rem !important;
       }
 
       .sun-item {
-        font-size: 0.94rem !important;
+        font-size: 1.26rem !important;
       }
 
       .air-quality-row {
@@ -934,6 +944,32 @@
               <span class="summary-desc" id="todayDesc">薄曇り</span>
               <span class="summary-temp" id="todayTempRange">25/16℃</span>
             </div>
+            <div class="sun-cycle-inline">
+              <div class="sun-item" title="日の出">
+                <svg class="mono-svg" style="width:24px;height:24px;overflow:visible;" viewBox="0 0 24 24">
+                  <polyline points="8.5 5 12 1.5 15.5 5"></polyline>
+                  <line x1="12" y1="1.5" x2="12" y2="9"></line>
+                  <path d="M7 18a5 5 0 0 1 10 0"></path>
+                  <line x1="2" y1="18" x2="22" y2="18"></line>
+                  <line x1="5" y1="21.5" x2="19" y2="21.5"></line>
+                  <line x1="4.2" y1="11.2" x2="5.8" y2="12.8"></line>
+                  <line x1="19.8" y1="11.2" x2="18.2" y2="12.8"></line>
+                </svg>
+                <span id="sunriseTime">05:55</span>
+              </div>
+              <div class="sun-item" title="日の入り">
+                <svg class="mono-svg" style="width:24px;height:24px;overflow:visible;" viewBox="0 0 24 24">
+                  <polyline points="8.5 6 12 9.5 15.5 6"></polyline>
+                  <line x1="12" y1="1.5" x2="12" y2="9.5"></line>
+                  <path d="M7 18a5 5 0 0 1 10 0"></path>
+                  <line x1="2" y1="18" x2="22" y2="18"></line>
+                  <line x1="5" y1="21.5" x2="19" y2="21.5"></line>
+                  <line x1="4.2" y1="11.2" x2="5.8" y2="12.8"></line>
+                  <line x1="19.8" y1="11.2" x2="18.2" y2="12.8"></line>
+                </svg>
+                <span id="sunsetTime">16:55</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -960,40 +996,6 @@
                 <span id="apparentTemp">24.5</span>℃
               </span>
             </div>
-          </div>
-        </div>
-
-        <!-- 日の出・日の入り (上向き矢印・下向き矢印付きの分かりやすいモノクロアイコン) -->
-        <div class="sun-cycle-panel">
-          <div class="sun-item" title="日の出">
-            <svg class="mono-svg" style="width:22px;height:22px;overflow:visible;" viewBox="0 0 24 24">
-              <!-- 上向き矢印 (昇る太陽) -->
-              <polyline points="8.5 5 12 1.5 15.5 5"></polyline>
-              <line x1="12" y1="1.5" x2="12" y2="9"></line>
-              <!-- 地平線と半円の太陽 -->
-              <path d="M7 18a5 5 0 0 1 10 0"></path>
-              <line x1="2" y1="18" x2="22" y2="18"></line>
-              <line x1="5" y1="21.5" x2="19" y2="21.5"></line>
-              <!-- 斜め光線 -->
-              <line x1="4.2" y1="11.2" x2="5.8" y2="12.8"></line>
-              <line x1="19.8" y1="11.2" x2="18.2" y2="12.8"></line>
-            </svg>
-            <span id="sunriseTime">05:55</span>
-          </div>
-          <div class="sun-item" title="日の入り">
-            <svg class="mono-svg" style="width:22px;height:22px;overflow:visible;" viewBox="0 0 24 24">
-              <!-- 下向き矢印 (沈む太陽) -->
-              <polyline points="8.5 6 12 9.5 15.5 6"></polyline>
-              <line x1="12" y1="1.5" x2="12" y2="9.5"></line>
-              <!-- 地平線と半円の太陽 -->
-              <path d="M7 18a5 5 0 0 1 10 0"></path>
-              <line x1="2" y1="18" x2="22" y2="18"></line>
-              <line x1="5" y1="21.5" x2="19" y2="21.5"></line>
-              <!-- 斜め光線 -->
-              <line x1="4.2" y1="11.2" x2="5.8" y2="12.8"></line>
-              <line x1="19.8" y1="11.2" x2="18.2" y2="12.8"></line>
-            </svg>
-            <span id="sunsetTime">16:55</span>
           </div>
         </div>
 
